@@ -75,4 +75,4 @@ if gass:
         # sns.scatterplot(df_tres, x="odometer", y="price", hue = 'marca')
         figa = px.scatter(df_tres, x='odometer', y='price',
                           range_y=([0, slider_precio]))
-        figa.show()
+        st.plotly_chart(figa)
