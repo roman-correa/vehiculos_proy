@@ -27,14 +27,14 @@ if hist_box:
             fig, ax = plt.subplots(figsize=(8, 5))
             for i in marca_select:
                 sns.histplot(data=df_filt[df_filt['marca']
-                            == i], x='price', ax=ax, label=i)
+                                          == i], x='price', ax=ax, label=i)
             ax.legend(title='Marca')
             ax.set_xlim((0, 70000))
             st.pyplot(fig)
 
 
-
-slider_precio = st.slider('Selecciones su presupuesto', min_value = 0, max_value = 70000, step=1)
+slider_precio = st.slider('Selecciones su presupuesto',
+                          min_value=0, max_value=70000, step=1)
 
 if 'slider_precio' not in st.session_state:
     st.session_state.slicer_precio = False
@@ -55,3 +55,7 @@ if gass:
 if st.session_state.gass:
     df_tres = df_dos.query('fuel in @gass')
     df_tres
+
+# crear un gráfico de dispersión
+fig = px.scatter(df_tres, x="odometer", y="price")
+fig.show()
