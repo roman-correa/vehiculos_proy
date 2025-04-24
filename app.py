@@ -3,7 +3,10 @@ import plotly.express as px
 import streamlit as st
 
 car_data = pd.read_csv('vehicles_us.csv')  # leer los datos
-st.header("ALGO NO ME FUNCIONA")
+#st.header("ALGO NO ME FUNCIONA") 
+
+marcas =['ford','hyundai','bmw','honda','toyota','chevrolet','ram']
+marca_select = st.selectbox('Selecciones una marca:', marcas)
 
 hist_box = st.checkbox('Construir histograma')  # crear un botón
 
