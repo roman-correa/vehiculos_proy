@@ -43,7 +43,7 @@ if hist_box:
 
 # slider con el presupuesto del cliente para filtrar los vehiculos previamente filtrado por marcas
 slider_precio = st.slider('Selecciones su presupuesto',
-                          min_value=0, max_value=70000, step=1)
+                          min_value=0, max_value=70000, step=1, value=20000)
 
 # presentacion de la informacion filtrada por marca y presupuesto
 if 'slider_precio' not in st.session_state:
@@ -67,18 +67,12 @@ if 'gass' not in st.session_state:
 if gass:
     st.session_state.gass = True
     if st.session_state.gass:
-        st.subheader('Informacion filtrada por marca, presupuesto y combustible')
+        st.subheader(
+            'Informacion filtrada por marca, presupuesto y combustible')
         df_tres = df_dos.query('fuel in @gass')
         df_tres
-        
-        #sns.scatterplot(df_tres, x="odometer", y="price", hue = 'marca')
-        figa = px.scatter(df_tres, x= 'odometer', y = 'price',range_y = ([0,slider_precio]))
+
+        # sns.scatterplot(df_tres, x="odometer", y="price", hue = 'marca')
+        figa = px.scatter(df_tres, x='odometer', y='price',
+                          range_y=([0, slider_precio]))
         figa.show()
-        
-
-
-
-
-
-        
-
