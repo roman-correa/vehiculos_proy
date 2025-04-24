@@ -10,12 +10,12 @@ marca_select = st.selectbox('Selecciones una marca:', marcas)
 
 
 hist_box = st.checkbox('Construir histograma')  # crear un botón
-patron_busqueda = '|'.join(marca_select)
-mrc= df.query('model.str.contains(@patron_busqueda)')
+
 if hist_box:  # al hacer clic en el botón
+    patron_busqueda = '|'.join(marca_select)
+    mrc = df.query('model.str.contains(@patron_busqueda)')
     # escribir un mensaje
-    st.write(
-        'Creación de un histograma para el conjunto de datos de anuncios de venta de coches')
+    st.write(f'Creación de un histograma para el conjunto de datos {patron_busqueda} de anuncios de venta de coches')
 
     # crear un histograma
     fig = px.histogram(mrc, x="price")
