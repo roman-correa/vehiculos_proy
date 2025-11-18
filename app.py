@@ -1,137 +1,172 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-import logging
-import os
-from typing import Optional, List
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np # Importar numpy para mejor manejo de nulos
 
-# Configuración
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# --- Configuración Inicial de la Página ---
+st.set_page_config(
+    page_title="Dashboard de Vehículos en Venta",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///vehiculos.db').replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# --- Título Principal ---
+st.header('🚗 **VEHÍCULOS EN VENTA**')
+st.markdown("Explora el mercado de vehículos filtrando por marca, presupuesto y tipo de combustible.")
 
-# Configuración para producción
-if app.config['ENV'] == 'production':
-    app.config['PREFERRED_URL_SCHEME'] = 'https'
-
-db = SQLAlchemy(app)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-# Headers de seguridad para archivos estáticos
-@app.after_request
-def set_security_headers(response):
-    if request.path.startswith('/static/'):
-        # Headers para archivos estáticos
-        response.headers['Cache-Control'] = 'public, max-age=3600'
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-    return response
-
-# Modelos (mantener igual que antes)
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    vehiculos = db.relationship('Vehiculo', backref='propietario', lazy='dynamic', cascade='all, delete-orphan')
+# --- Carga de Datos y Preprocesamiento ---
+@st.cache_data # Cachear la carga y limpieza de datos para mejorar el rendimiento
+def load_and_clean_data(file_path):
+    df = pd.read_csv(file_path)
     
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+    # Rellenar valores nulos
+    # Para `model_year`, `cylinders`, `odometer` y `paint_color`, usar la moda o el promedio si es adecuado
+    df['model_year'] = df['model_year'].fillna(df['model_year'].median())
+    df['cylinders'] = df['cylinders'].fillna(df['cylinders'].mode()[0])
+    df['odometer'] = df['odometer'].fillna(df['odometer'].median())
     
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Vehiculo(db.Model):
-    __tablename__ = 'vehiculos'
-    id = db.Column(db.Integer, primary_key=True)
-    marca = db.Column(db.String(100), nullable=False, index=True)
-    modelo = db.Column(db.String(100), nullable=False, index=True)
-    año = db.Column(db.Integer, nullable=False, index=True)
-    color = db.Column(db.String(50))
-    placa = db.Column(db.String(20), unique=True, index=True)
-    fecha_compra = db.Column(db.Date)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    # Rellenar nulos con 'unknown' para categorías
+    for col in ['paint_color', 'is_4wd', 'condition', 'fuel', 'transmission']:
+        df[col] = df[col].fillna('unknown')
+        
+    # Asignación de Marca (Mejorado)
+    # Lista de marcas a considerar
+    marcas_base = ['ford', 'hyundai', 'bmw', 'honda', 'toyota', 'chevrolet', 'ram']
+    df['marca'] = np.nan # Inicializar la columna 'marca' con NaN
     
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'marca': self.marca,
-            'modelo': self.modelo,
-            'año': self.año,
-            'color': self.color,
-            'placa': self.placa,
-            'fecha_compra': self.fecha_compra.isoformat() if self.fecha_compra else None
-        }
+    # Usar expresiones regulares para buscar todas las marcas a la vez de forma eficiente
+    regex_pattern = '|'.join([f'({m})' for m in marcas_base])
+    
+    # Aplicar una función para encontrar la primera coincidencia
+    def find_marca(model):
+        if pd.isna(model):
+            return np.nan
+        for marca in marcas_base:
+            if marca in model.lower():
+                return marca.capitalize() # Capitalizar el nombre de la marca
+        return 'Otras' # Asignar 'Otras' si no coincide con las marcas clave
+        
+    df['marca'] = df['model'].apply(find_marca)
+    
+    # Filtrar solo registros con una marca asignada (excluir Nans y 'Otras' si se desea, o solo 'Otras')
+    # Para este ejemplo, solo nos interesan las marcas_base y las nombramos en mayúscula para distinguirlas
+    df = df[df['marca'].isin([m.capitalize() for m in marcas_base])]
+    
+    return df
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+df = load_and_clean_data('vehicles_us.csv')
+marcas_disponibles = sorted(df['marca'].unique().tolist()) # Obtener marcas únicas y limpias
 
-# Rutas para servir archivos estáticos específicos
-@app.route('/static/js/<path:filename>')
-def serve_js(filename):
-    return send_from_directory('static/js', filename)
+# --- Barra Lateral para Filtros Principales (Mejor UX) ---
+with st.sidebar:
+    st.header("⚙️ Filtros de Búsqueda")
+    
+    # 1. Selección de Marcas
+    marca_select = st.multiselect(
+        'Selecciona Marcas:', 
+        options=marcas_disponibles, 
+        default=marcas_disponibles,
+        key='marca_filtro'
+    )
+    
+    # 2. Selección de Presupuesto
+    max_price = int(df['price'].max())
+    slider_precio = st.slider(
+        'Presupuesto Máximo (Precio)',
+        min_value=0, 
+        max_value=max_price, # Usar el máximo real de los datos
+        step=500, 
+        value=min(25000, max_price), # Valor por defecto más realista
+        key='precio_filtro'
+    )
+    
+    # 3. Selección de Combustible (Usamos `pills` dentro del sidebar para un diseño compacto)
+    fuel_options = df['fuel'].unique().tolist()
+    gass_select = st.multiselect(
+        "Tipos de Combustible:", 
+        options=fuel_options, 
+        default=fuel_options,
+        key='combustible_filtro'
+    )
+    
+    # Botón/Checkbox para el Histograma
+    st.subheader("Visualizaciones")
+    hist_box = st.checkbox('Mostrar Histograma de Precios', value=True)
+    
+# --- Aplicar Filtrado de Datos ---
+# Se recomienda un único bloque de filtrado para mayor claridad
+df_filtrado = df[
+    (df['marca'].isin(marca_select)) & 
+    (df['price'] <= slider_precio) & 
+    (df['fuel'].isin(gass_select))
+]
 
-@app.route('/static/css/<path:filename>')
-def serve_css(filename):
-    return send_from_directory('static/css', filename)
+# --- Visualizaciones y Resultados ---
 
-# Health check mejorado
-@app.route('/health')
-def health_check():
-    try:
-        db.session.execute('SELECT 1')
-        return jsonify({
-            'status': 'healthy', 
-            'database': 'connected',
-            'timestamp': datetime.utcnow().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        return jsonify({
-            'status': 'unhealthy', 
-            'database': 'disconnected',
-            'error': str(e)
-        }), 500
+if df_filtrado.empty:
+    st.warning("⚠️ **No hay vehículos que coincidan con los filtros seleccionados.** Intenta modificar tu presupuesto, marca o tipo de combustible.")
+else:
+    
+    # 1. Histograma Condicional
+    if hist_box:
+        st.subheader(f'Histograma de Precios por Marca (Máx: ${slider_precio:,.0f})')
+        # Usar `st.container` y `st.columns` para ordenar la visualización
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            fig, ax = plt.subplots(figsize=(8, 5))
+            
+            # Iterar sobre las marcas seleccionadas y no sobre todas las del df_filtrado
+            for marca in marca_select:
+                data_plot = df_filtrado[df_filtrado['marca'] == marca]
+                sns.histplot(
+                    data=data_plot, 
+                    x='price', 
+                    ax=ax, 
+                    label=marca, 
+                    alpha=0.6, 
+                    kde=True, # Añadir KDE para suavizar la distribución
+                    bins=20 # Definir un número de bins
+                )
+            
+            # Configuración final del gráfico
+            ax.legend(title='Marca')
+            ax.set_title('Distribución de Precios de Vehículos Seleccionados')
+            ax.set_xlabel('Precio (USD)')
+            ax.set_ylabel('Frecuencia')
+            ax.set_xlim((0, slider_precio * 1.05)) # Ajustar el límite X al presupuesto
+            st.pyplot(fig)
+        
+        with col2:
+            st.metric("Total de Vehículos Encontrados", f"{len(df_filtrado):,}")
+            # Muestra el precio promedio en el rango filtrado
+            st.metric("Precio Promedio", f"${df_filtrado['price'].mean():,.0f}")
+        
+        st.markdown("---")
 
-# El resto de las rutas se mantienen igual...
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    vehiculos = Vehiculo.query.filter_by(user_id=current_user.id)\
-        .order_by(Vehiculo.created_at.desc())\
-        .paginate(page=page, per_page=per_page, error_out=False)
-    return render_template('dashboard.html', vehiculos=vehiculos)
+    # 2. Scatter Plot (Dispersión)
+    st.subheader('Relación entre Odómetro y Precio')
+    st.markdown("Visualiza cómo el **kilometraje (odómetro)** impacta el **precio** de los vehículos.")
+    
+    # Crear el gráfico de dispersión con Plotly Express
+    figa = px.scatter(
+        df_filtrado, 
+        x='odometer', 
+        y='price', 
+        color='marca', # Usar la marca como color
+        hover_data=['model', 'condition', 'model_year'], # Datos que aparecen al pasar el ratón
+        title="Odómetro vs. Precio, coloreado por Marca",
+        labels={'odometer': 'Kilometraje (Odómetro)', 'price': 'Precio (USD)'}
+    )
+    
+    # Ajustar el rango del eje Y al presupuesto máximo
+    figa.update_yaxes(range=[0, slider_precio * 1.05]) 
+    st.plotly_chart(figa, use_container_width=True)
+    
+    st.markdown("---")
 
-# ... (resto de rutas igual que antes)
-
-def init_db():
-    try:
-        db.create_all()
-        logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Database initialization error: {str(e)}")
-
-if __name__ == '__main__':
-    with app.app_context():
-        init_db()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # 3. Presentación de la Información Filtrada (Tabla)
+    st.subheader(f'Listado de Vehículos Encontrados ({len(df_filtrado)} resultados)')
+    st.dataframe(df_filtrado, use_container_width=True)
