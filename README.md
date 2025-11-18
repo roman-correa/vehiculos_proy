@@ -1,10 +1,34 @@
-Proyecto perteneciente al Sprint 7 del bootcamp de datascience; impartido por TripleTen.
+# 🚗 Dashboard Interactivo de Vehículos en Venta 
 
-Se trata de una pequeña aplicacion web que ayuda a quien la use a filtrar carros en venta segun ciertas caracteristicas como la marca, el presupuesto y el combustible.
+## 📝 Descripción del Proyecto
 
-En esencia es un Dataframe filtrado de varias maneras y con un par de ayudas visuales.
+Este proyecto presenta un **Dashboard Interactivo** construido con **Streamlit** y **Python** para el análisis exploratorio de datos (EDA) sobre listados de vehículos usados. Permite a los usuarios filtrar la información por **Marca**, **Presupuesto Máximo** y **Tipo de Combustible** para visualizar la distribución de precios y la relación entre el precio y el kilometraje (odómetro) de manera dinámica.
 
-Aplicacion web, usando el servicio de render y streamlit como intermediario. Picke las opciones que desea filtrar en la pagina. Se generara un dataframe con los vehiculos y un grafico de ayuda.
+## ✨ Características Principales
 
-URL: (https://vehiculos-proy-2.onrender.com)
+* **Filtros Dinámicos:** Utiliza la barra lateral de Streamlit para una experiencia de filtrado intuitiva y eficiente.
+* **Limpieza de Datos:** Implementación de `@st.cache_data` para el preprocesamiento, manejo de valores nulos (NaN) y asignación eficiente de marcas.
+* **Visualizaciones Clave:**
+    * **Histograma de Precios:** Muestra la distribución de precios por marca dentro del rango presupuestado (generado con `matplotlib` y `seaborn`).
+    * **Gráfico de Dispersión (Scatter Plot):** Analiza la correlación entre **Odómetro (Kilometraje)** y **Precio** (generado con `Plotly Express`).
+* **Métricas en Tiempo Real:** Proporciona un resumen instantáneo del total de vehículos encontrados y el precio promedio según los filtros aplicados.
 
+## 🛠️ Tecnologías Utilizadas
+
+| Tecnología | Rol |
+| :--- | :--- |
+| **Python** | Lenguaje de programación principal. |
+| **Streamlit** | Framework para construir la interfaz de usuario interactiva (Dashboard). |
+| **Pandas** | Manipulación y limpieza de datos (DataFrame). |
+| **Plotly Express** | Creación de gráficos interactivos (Scatter Plot). |
+| **Matplotlib / Seaborn** | Creación de gráficos estáticos de distribución (Histograma). |
+
+## 🚀 Instalación y Ejecución Local
+
+Para ejecutar este dashboard en tu máquina local, sigue los siguientes pasos:
+
+### 1. Clonar el Repositorio
+
+```bash
+git clone <URL_DE_TU_REPOSITORIO>
+cd <NOMBRE_DEL_DIRECTORIO>
