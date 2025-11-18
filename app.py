@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 df = pd.read_csv('vehicles_us.csv')  # leer los datos
 st.header('**VEHICULOS EN VENTA**')
-st.subheader('Selecciones tantas marcas commo desee')
+st.subheader('Selecciones tantas marcas como desee')
 
 # definicion de un primer filtro manual para sacar las marcas de la columna 'model'
 marcas = ['ford', 'hyundai', 'bmw', 'honda', 'toyota', 'chevrolet', 'ram']
